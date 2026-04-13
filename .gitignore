@@ -1,0 +1,17 @@
+# Senhas e chaves de API (NUNCA suba para o GitHub)
+.env
+
+# Ambiente Virtual do Python
+venv/
+env/
+
+# Banco de dados vetorial local
+faiss_index/
+
+# Configurações do editor de código
+.vscode/
+
+# Arquivos temporários do Python e caches do sistema
+__pycache__/
+*.pyc
+.DS_Store
