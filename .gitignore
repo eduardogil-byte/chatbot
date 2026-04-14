@@ -2,10 +2,12 @@
 .env
 
 # Ambiente Virtual do Python
+.venv/
 venv/
 env/
+ENV/
 
-# Banco de dados vetorial local
+# Banco de dados vetorial local (FAISS)
 faiss_index/
 
 # Configurações do editor de código
@@ -14,4 +16,6 @@ faiss_index/
 # Arquivos temporários do Python e caches do sistema
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .DS_Store

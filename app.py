@@ -1,16 +1,13 @@
+import fitz
+import base64
 import streamlit as st
-import google.generativeai as genai
-import pytesseract
-from pdf2image import convert_from_bytes
-from PyPDF2 import PdfReader
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
+from langchain_google_genai import  ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
 from langchain_community.vectorstores import FAISS
-
 from langchain_core.documents import Document
-
 from langchain_community.embeddings import HuggingFaceEmbeddings
-
 # IMPORTAÇÕES NOVAS (Substituem o antigo load_qa_chain)
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -18,37 +15,49 @@ from langchain_core.output_parsers import StrOutputParser
 from dotenv import load_dotenv
 import os
 
-
-
 load_dotenv()
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 
-
-    
-# implementando pegar texto apartir de imagens (fazer)
 def get_pdf_text(pdf_docs):
     docs = []
+
+    vision_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+
     for pdf in pdf_docs:
+        nome_do_arquivo = pdf.name
+
         pdf_bytes = pdf.read()
 
-        pdf.seek(0)
+        pdf_document = fitz.open(stream=pdf_bytes, filetype='pdf')
 
-        pdf_reader = PdfReader(pdf)
-        
-        images = convert_from_bytes(pdf_bytes)
+        for i, page in enumerate(pdf_document):
+            text = page.get_text()
 
-        for i, page in enumerate(pdf_reader.pages):
-            text = page.extract_text()
+            if not text or len(text.strip()) < 50:
+                print(f"Página {i + 1} parece ser escaneada. Pedindo para o Gemini ler a imagem...")
 
-            if text is None or len(text.strip()) < 50:
-                print(f"Página {i + 1} parece ser escaneada. Acionando OCR...")
+                pix = page.get_pixmap(dpi=150)
+                img_data = pix.tobytes('png')
 
-                image_da_pagina = images[i]
+                img_base64 = base64.b64encode(img_data).decode('utf-8')
 
-                text = pytesseract.image_to_string(image_da_pagina, lang="por")
+                mensagem = HumanMessage(
+                    content=[
+                        {"type": "text", "text": "Extraia todo o texto legível desta imagem de documento. Retorne apenas o texto, sem comentários adicionais."},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_base64}"}}
+                    ]
+                )
+                
+                resposta_vision = vision_model.invoke([mensagem])
+                text = resposta_vision.content
 
             if text and text.strip():
-                docs.append(Document(page_content=text, metadata={"page": i + 1}))
+                docs.append(Document(page_content=text, metadata={
+                    "page": i + 1,
+                    "nome_arquivo": nome_do_arquivo
+                    }
+                ))
+        pdf_document.close()
     return docs
 
 def get_text_chunks(docs):
@@ -58,6 +67,7 @@ def get_text_chunks(docs):
 
 def get_vector_store(text_chunks):
     embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+
     vector_store = FAISS.from_documents(text_chunks, embedding=embedding)
     vector_store.save_local("faiss_index")
 
@@ -87,7 +97,7 @@ def user_input(user_question):
     docs = new_db.similarity_search(user_question)
     
     # Junta os textos encontrados para passar para o modelo
-    contexto_junto = "\n\n".join([f"Página {doc.metadata.get('page', 'Desconhecida')}:\n{doc.page_content}" for doc in docs])
+    contexto_junto = "\n\n".join([f"Arquivo: {doc.metadata.get('nome_arquivo', 'Desconhecido')} - Página {doc.metadata.get('page', 'Desconhecida')}:\n{doc.page_content}" for doc in docs])
 
     chain = get_conversational_chain()
     
