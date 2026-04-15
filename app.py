@@ -18,15 +18,11 @@ import os
 load_dotenv()
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 
-def get_pdf_text(pdf_docs):
+def get_pdf_text(arquivos_info):
     docs = []
-
     vision_model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
 
-    for pdf in pdf_docs:
-        nome_do_arquivo = pdf.name
-
-        pdf_bytes = pdf.read()
+    for nome_do_arquivo, pdf_bytes in arquivos_info:
 
         pdf_document = fitz.open(stream=pdf_bytes, filetype='pdf')
 
@@ -34,7 +30,7 @@ def get_pdf_text(pdf_docs):
             text = page.get_text()
 
             if not text or len(text.strip()) < 50:
-                print(f"Página {i + 1} parece ser escaneada. Pedindo para o Gemini ler a imagem...")
+                print(f"Página {i + 1} de {nome_do_arquivo} parece ser escaneada. Pedindo para o Gemini ler a imagem...")
 
                 pix = page.get_pixmap(dpi=150)
                 img_data = pix.tobytes('png')
@@ -88,6 +84,8 @@ def get_conversational_chain():
     chain = prompt | model | StrOutputParser()
     return chain
 
+
+# Apagar tudo para baixo
 def user_input(user_question):
     embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 

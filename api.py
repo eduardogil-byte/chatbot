@@ -4,6 +4,7 @@ from pydantic import BaseModel
 import uvicorn
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import (
     get_pdf_text,
@@ -14,11 +15,24 @@ from app import (
 
 app = FastAPI(title="API - Chatbot", description="API para Gestão de Conhecimento Institucional")
 
+# --- ADICIONE ESTE BLOCO ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Permite que qualquer origem acesse a API (ideal para testes locais)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 class PerguntaRequest(BaseModel):
     pergunta: str
 
 class RespostaResponse(BaseModel):
     resposta: str
+
+@app.get('/')
+def inicio():
+    return {"status":200}
 
 @app.post("/treinar", summary="API para Gestão de Conhecimento Institucional")
 async def treinar_base(arquivos: list[UploadFile] = File(...)):
