@@ -6,6 +6,8 @@ from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from fastapi.middleware.cors import CORSMiddleware
 
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 from app import (
     get_pdf_text,
     get_text_chunks,
@@ -61,7 +63,7 @@ async def fazer_pergunta(request: PerguntaRequest):
         raise HTTPException(status_code=400, detail="O índice do banco de dados não foi encontrado. Por favor, treine a base primeiro enviando os PDFs.")
 
     try:
-        embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
         new_db = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
 
         docs = new_db.similarity_search(request.pergunta)

@@ -12,6 +12,8 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
 from dotenv import load_dotenv
 import os
 
@@ -62,7 +64,7 @@ def get_text_chunks(docs):
     return chunks
 
 def get_vector_store(text_chunks):
-    embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
     vector_store = FAISS.from_documents(text_chunks, embedding=embedding)
     vector_store.save_local("faiss_index")
@@ -87,7 +89,7 @@ def get_conversational_chain():
 
 # Apagar tudo para baixo
 def user_input(user_question):
-    embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
 
     new_db = FAISS.load_local("faiss_index", embedding, allow_dangerous_deserialization=True)
 
