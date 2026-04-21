@@ -1,14 +1,12 @@
 import os
-from fastapi import FastAPI, UploadFile, File, HTTPException
-from pydantic import BaseModel
 import uvicorn
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from pydantic import BaseModel
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from supabase import create_client, Client
-from langchain_community.vectorstores import SupabaseVectorStore
+
 from app import (
     get_pdf_text,
     get_text_chunks,
@@ -42,6 +40,17 @@ class RespostaResponse(BaseModel):
 @app.get('/')
 def inicio():
     return {"status":200}
+
+@app.get("/arquivos/{nome_arquivo}/ver")
+def ver_arquivo(nome_arquivo: str):
+    try:
+        res = supabase.storage.from_("editais").get_public_url(nome_arquivo)
+
+        public_url = res if isinstance(res, str) else res.replace(" ", "%20")
+
+        return RedirectResponse(url=public_url)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao obter URL: {str(e)}")
 
 @app.delete("/arquivos/{nome_arquivo}")
 async def excluir_arquivo(nome_arquivo: str):
@@ -105,38 +114,6 @@ async def treinar_base(arquivos: list[UploadFile] = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-
-# @app.post('/perguntar', response_model=RespostaResponse, summary="Fazer uma pergunta sobre os documentos processados")
-# async def fazer_pergunta(request: PerguntaRequest):
-#     try:
-#         embedding = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-        
-#         vector_store = SupabaseVectorStore(
-#             embedding=embedding,
-#             client=supabase,
-#             table_name="documents",
-#             query_name="match_documents"
-#         )
-
-#         docs = vector_store.similarity_search(request.pergunta)
-
-#         print(f"docs: {docs}")
-
-#         if not docs:
-#             return RespostaResponse(resposta="Desculpe, não encontrei informações relevantes na base.")
-
-#         contexto_junto = "\n\n".join([f"Arquivo: {doc.metadata.get('nome_arquivo', 'Desconhecido')} - Página {doc.metadata.get('page', 'Desconhecida')}:\n{doc.page_content}" for doc in docs])
-
-#         chain = get_conversational_chain()
-#         response = chain.invoke({"context": contexto_junto, "question": request.pergunta})
-
-#         return RespostaResponse(resposta=response)
-    
-#     except Exception as e:
-#         import traceback
-#         traceback.print_exc()
-#         raise HTTPException(status_code=500, detail=f"Erro ao processar pergunta: {str(e)}")
-
 @app.post('/perguntar', response_model=RespostaResponse, summary="Fazer uma pergunta sobre os documentos processados")
 async def fazer_pergunta(request: PerguntaRequest):
     try:
@@ -185,4 +162,4 @@ async def fazer_pergunta(request: PerguntaRequest):
         raise HTTPException(status_code=500, detail=f"Erro ao processar pergunta: {str(e)}")
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)

@@ -1,24 +1,20 @@
+import os
 import fitz
 import base64
-import streamlit as st
 import re
 import unicodedata
-
 import concurrent.futures
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import  ChatGoogleGenerativeAI
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_core.messages import HumanMessage
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from supabase import create_client, Client
 from langchain_community.vectorstores import SupabaseVectorStore
+
+from supabase import create_client, Client
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
@@ -119,6 +115,5 @@ def get_conversational_chain():
     model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     
-    # PADRÃO NOVO (LCEL) - Evita o erro de "memory"
     chain = prompt | model | StrOutputParser()
     return chain

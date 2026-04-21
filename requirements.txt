@@ -1,23 +1,12 @@
-# Interface Web
-streamlit
-
-# Google Gemini API
-google-generativeai
-
-# Manipulação de PDF e OCR (Visão)
-PyPDF2
-pdf2image
-pytesseract
-
-# LangChain e Integrações
+fastapi
+uvicorn
+python-multipart
+pydantic
+PyMuPDF
+langchain
 langchain-core
 langchain-community
-langchain-google-genai
 langchain-text-splitters
-
-# Banco de Dados Vetorial e Embeddings (HuggingFace)
-faiss-cpu
-sentence-transformers
-
-# Variáveis de Ambiente
+langchain-google-genai
+supabase
 python-dotenv
