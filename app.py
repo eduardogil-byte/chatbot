@@ -104,16 +104,60 @@ def get_vector_store(text_chunks):
 
 def get_conversational_chain():
     prompt_template = """
-    Você é um assistente da recepção. Responda à pergunta da forma mais detalhada possível usando APENAS o contexto fornecido. 
-    Sempre informe o nome do arquivo e o número da página de onde você extraiu a informação no final da resposta (exemplo: "Fonte: Arquivo X - Página Y").
-    Se a resposta não estiver no contexto fornecido, diga: "Desculpe, essa informação não está nos editais que eu li.", não invente a resposta.\n\n
-    Contexto do Edital:\n {context}\n
-    Pergunta do Usuário: \n{question}\n
+    Você é um assistente institucional especializado em responder perguntas sobre editais.
+
+    Responda usando APENAS as informações do contexto fornecido.
+    Se a informação não estiver no contexto, diga claramente que não encontrou essa informação no edital.
+
+    Regras:
+    - Responda de forma direta primeiro.
+    - Depois explique detalhes importantes, se existirem.
+    - Se houver datas, destaque as datas.
+    - Se houver prazo inicial e final, informe os dois.
+    - Se a pergunta estiver ambígua, explique o que foi encontrado relacionado ao assunto.
+    - Não invente informações.
+    - No final, cite a fonte com nome do arquivo e página.
+    - Se existirem vários editais no contexto, diga de qual edital veio cada informação.
+
+    Contexto:
+    {context}
+
+    Pergunta do usuário:
+    {question}
+
     Resposta:
     """
 
-    model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.3)
-    prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
+    model = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0.1)
+    prompt = PromptTemplate(
+        template=prompt_template, 
+        input_variables=["context", "question"]
+    )
     
     chain = prompt | model | StrOutputParser()
     return chain
+
+def formatar_resposta(texto: str):
+    texto = texto.replace("\r\n", "\n")
+
+    # Remove espaços desnecessários
+    texto = re.sub(r'[ \t]+', ' ', texto)
+    texto = re.sub(r' *\n *', '\n', texto)
+
+    # Garante quebra antes de listas numeradas: 1. 2. 3.
+    texto = re.sub(r'\n(?=\d+\.\s)', '\n\n', texto)
+
+    # Garante quebra antes de bullet points
+    texto = re.sub(r'\n(?=[\-•]\s)', '\n\n', texto)
+
+    # Garante quebra depois de linhas em negrito que funcionam como título
+    texto = re.sub(r'(\*\*[^*\n]+:\*\*)\n', r'\1\n\n', texto)
+
+    # Garante quebra antes de "Fonte:"
+    texto = re.sub(r'\n(?=Fonte:)', '\n\n', texto)
+    texto = re.sub(r'\n(?=\*\*Fonte)', '\n\n', texto)
+
+    # Evita excesso de quebras
+    texto = re.sub(r'\n{3,}', '\n\n', texto)
+
+    return texto.strip()

@@ -12,7 +12,8 @@ from app import (
     get_text_chunks,
     get_vector_store,
     get_conversational_chain,
-    limpar_nome_arquivo
+    limpar_nome_arquivo,
+    formatar_resposta
 )
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -119,6 +120,7 @@ async def fazer_pergunta(request: PerguntaRequest):
     try:
         # 1. Transforma a pergunta do usuário em um vetor matemático
         embedding_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+
         vetor_pergunta = embedding_model.embed_query(request.pergunta)
         
         filtro_banco = {}
@@ -129,7 +131,7 @@ async def fazer_pergunta(request: PerguntaRequest):
             "match_documents",
             {
                 "query_embedding": vetor_pergunta,
-                "match_count": 4,
+                "match_count": 10,
                  "filter": filtro_banco
             }
         ).execute()
@@ -153,6 +155,8 @@ async def fazer_pergunta(request: PerguntaRequest):
 
         chain = get_conversational_chain()
         response = chain.invoke({"context": contexto_junto, "question": request.pergunta})
+
+        response = formatar_resposta(response)
 
         return RespostaResponse(resposta=response)
     
