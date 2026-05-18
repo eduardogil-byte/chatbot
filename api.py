@@ -13,7 +13,8 @@ from app import (
     get_vector_store,
     get_conversational_chain,
     limpar_nome_arquivo,
-    formatar_resposta
+    formatar_resposta,
+    documento_ja_existe
 )
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -35,8 +36,16 @@ class PerguntaRequest(BaseModel):
     pergunta: str
     arquivo_escolhido: str | None=None
 
+class FonteResponse(BaseModel):
+    arquivo: str
+    pagina: int | str
+    url: str 
+
 class RespostaResponse(BaseModel):
     resposta: str
+    fontes: list[FonteResponse] = []
+
+
 
 @app.get('/')
 def inicio():
@@ -90,8 +99,16 @@ async def listar_arquivos():
 async def treinar_base(arquivos: list[UploadFile] = File(...)):
     try:
         arquivos_info = []
+
         for file in arquivos:
             nome_seguro = limpar_nome_arquivo(file.filename)
+
+            if documento_ja_existe(nome_seguro):
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"O arquivo '{nome_seguro}' já foi treinado. Envie outro arquivo ou remova o antigo antes."
+                )
+
             conteudo = await file.read()
             arquivos_info.append((nome_seguro, conteudo))
 
@@ -145,10 +162,29 @@ async def fazer_pergunta(request: PerguntaRequest):
                 metadata=item.get("metadata", {})
             ))
 
+
+        fontes_map = {}
+
+        for doc in docs:
+            nome_arquivo = doc.metadata.get("nome_arquivo", "Desconhecido")
+            pagina = doc.metadata.get("page", "Desconhecida")
+
+            chave = f"{nome_arquivo}-{pagina}"
+
+            if chave not in fontes_map:
+                fontes_map[chave] = {
+                    "arquivo": nome_arquivo,
+                    "pagina": pagina,
+                    "url": f"/arquivos/{nome_arquivo}/ver"
+                }
+
+        fontes = list(fontes_map.values())
+
         print(f"Trechos encontrados no banco: {len(docs)}")
 
         if not docs:
-            return RespostaResponse(resposta="Desculpe, não encontrei informações relevantes na base.")
+            return RespostaResponse(resposta="Desculpe, não encontrei informações relevantes na base.", 
+                                    fontes=[])
 
         # 4. Junta os textos encontrados e manda para o Gemini ler e responder
         contexto_junto = "\n\n".join([f"Arquivo: {doc.metadata.get('nome_arquivo', 'Desconhecido')} - Página {doc.metadata.get('page', 'Desconhecida')}:\n{doc.page_content}" for doc in docs])
@@ -158,7 +194,7 @@ async def fazer_pergunta(request: PerguntaRequest):
 
         response = formatar_resposta(response)
 
-        return RespostaResponse(resposta=response)
+        return RespostaResponse(resposta=response, fontes=fontes)
     
     except Exception as e:
         import traceback

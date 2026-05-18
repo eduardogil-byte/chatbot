@@ -161,3 +161,16 @@ def formatar_resposta(texto: str):
     texto = re.sub(r'\n{3,}', '\n\n', texto)
 
     return texto.strip()
+
+
+def documento_ja_existe(nome_arquivo: str) -> bool:
+    resposta = (
+        supabase
+        .table("documents")
+        .select("id")
+        .filter("metadata->>nome_arquivo", "eq", nome_arquivo)
+        .limit(1)
+        .execute()
+    )
+
+    return len(resposta.data) > 0
