@@ -38,7 +38,7 @@ class PerguntaRequest(BaseModel):
 
 class FonteResponse(BaseModel):
     arquivo: str
-    pagina: int | str
+    paginas: list[int | str]
     url: str 
 
 class RespostaResponse(BaseModel):
@@ -169,16 +169,30 @@ async def fazer_pergunta(request: PerguntaRequest):
             nome_arquivo = doc.metadata.get("nome_arquivo", "Desconhecido")
             pagina = doc.metadata.get("page", "Desconhecida")
 
-            chave = f"{nome_arquivo}-{pagina}"
+            chave = nome_arquivo
 
             if chave not in fontes_map:
                 fontes_map[chave] = {
                     "arquivo": nome_arquivo,
-                    "pagina": pagina,
+                    "paginas": set(),
                     "url": f"/arquivos/{nome_arquivo}/ver"
                 }
 
-        fontes = list(fontes_map.values())
+            fontes_map[chave]["paginas"].add(pagina)
+
+        fontes = []
+
+        for fonte in fontes_map.values():
+            paginas_ordenadas = sorted(
+                list(fonte["paginas"]),
+                key=lambda p: int(p) if str(p).isdigit() else 999999
+            )
+
+            fontes.append({
+                "arquivo": fonte["arquivo"],
+                "paginas": paginas_ordenadas,
+                "url": fonte["url"]
+            })
 
         print(f"Trechos encontrados no banco: {len(docs)}")
 
