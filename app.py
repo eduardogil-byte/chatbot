@@ -112,7 +112,12 @@ def get_conversational_chain():
     Regras:
     - Responda de forma direta primeiro.
     - Depois explique detalhes importantes, se existirem.
-    - Se houver datas, destaque as datas.
+    - Seja objetivo e evite respostas muito longas.
+    - Formate a resposta em Markdown.
+    - Use títulos com ##.
+    - Use listas com "- " quando listar documentos, requisitos, etapas ou detalhes.
+    - Separe a resposta em blocos curtos.
+    - Se houver datas, destaque as datas em negrito.
     - Se houver prazo inicial e final, informe os dois.
     - Se a pergunta estiver ambígua, explique o que foi encontrado relacionado ao assunto.
     - Não invente informações.
@@ -140,24 +145,23 @@ def get_conversational_chain():
 def formatar_resposta(texto: str):
     texto = texto.replace("\r\n", "\n")
 
-    # Remove espaços desnecessários
     texto = re.sub(r'[ \t]+', ' ', texto)
     texto = re.sub(r' *\n *', '\n', texto)
 
-    # Garante quebra antes de listas numeradas: 1. 2. 3.
+    # Transforma alguns títulos comuns em Markdown
+    texto = re.sub(r'(?m)^(Resposta direta|Detalhes importantes|Detalhes|Fonte|Fontes|Períodos de Inscrição|Tipos de Recurso e Prazos):$', r'## \1', texto)
+
+    # Garante quebra antes de listas numeradas
     texto = re.sub(r'\n(?=\d+\.\s)', '\n\n', texto)
 
     # Garante quebra antes de bullet points
     texto = re.sub(r'\n(?=[\-•]\s)', '\n\n', texto)
 
-    # Garante quebra depois de linhas em negrito que funcionam como título
-    texto = re.sub(r'(\*\*[^*\n]+:\*\*)\n', r'\1\n\n', texto)
-
-    # Garante quebra antes de "Fonte:"
+    # Garante quebra antes de Fonte
     texto = re.sub(r'\n(?=Fonte:)', '\n\n', texto)
+    texto = re.sub(r'\n(?=Fontes:)', '\n\n', texto)
     texto = re.sub(r'\n(?=\*\*Fonte)', '\n\n', texto)
 
-    # Evita excesso de quebras
     texto = re.sub(r'\n{3,}', '\n\n', texto)
 
     return texto.strip()
